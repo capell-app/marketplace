@@ -34,9 +34,12 @@ final class MarketplaceInstallFlowCallbackController
         try {
             $session = CompleteMarketplaceInstallFlowAction::run($flowId, $code, $state);
             $actor = $request->user();
-            dispatch(new ResumeMarketplaceInstallFlowJob((int) $session->getKey(), $actor !== null
-                ? MarketplaceInstallActorData::fromAuthenticatable($actor)
-                : MarketplaceInstallActorData::system('marketplace-hosted-resume')))
+            ResumeMarketplaceInstallFlowJob::dispatch(
+                (int) $session->getKey(),
+                $actor !== null
+                    ? MarketplaceInstallActorData::fromAuthenticatable($actor)
+                    : MarketplaceInstallActorData::system('marketplace-hosted-resume'),
+            )
                 ->onConnection((string) config('capell-marketplace.marketplace.operations_queue_connection', 'database'))
                 ->onQueue((string) config('capell-marketplace.marketplace.operations_queue', 'capell-marketplace'));
         } catch (Throwable $throwable) {

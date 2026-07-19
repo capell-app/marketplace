@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Capell\Marketplace\Actions;
 
-use Capell\Marketplace\Contracts\MarketplaceComposerChangePublisher;
 use Capell\Marketplace\Data\ExtensionAcquisitionData;
 use Capell\Marketplace\Data\ExtensionListingData;
 use Capell\Marketplace\Data\MarketplaceComposerPublicationRequestData;
@@ -32,7 +31,7 @@ final class PublishMarketplaceComposerChangeAction
     {
         $publisher = $this->publishers->first();
 
-        if (! $publisher instanceof MarketplaceComposerChangePublisher) {
+        if ($publisher === null) {
             return [
                 'status' => 'unavailable',
                 'fallback' => 'composer_command',

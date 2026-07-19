@@ -204,7 +204,7 @@ final class QueueMarketplaceInstallAttemptAction
         if ($afterResponse) {
             RunMarketplaceInstallAttemptJob::dispatchAfterResponse((int) $attempt->getKey());
         } else {
-            dispatch(new RunMarketplaceInstallAttemptJob((int) $attempt->getKey()))
+            RunMarketplaceInstallAttemptJob::dispatch((int) $attempt->getKey())
                 ->onConnection((string) config('capell-marketplace.marketplace.operations_queue_connection', 'database'))
                 ->onQueue((string) config('capell-marketplace.marketplace.operations_queue', 'capell-marketplace'));
         }
