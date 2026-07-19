@@ -522,10 +522,7 @@ final class MarketplaceExtensionsBrowser extends Component implements HasActions
             $dependencyComposerNames,
         ));
         $installRecords = [...array_values($explicitRecords), ...$dependencyRecords];
-        $installComposerNames = array_values(array_filter(array_map(
-            $this->recordComposerName(...),
-            $installRecords,
-        )));
+        $installComposerNames = $this->recordComposerNames($installRecords);
         $totalCents = array_sum(array_map(
             fn (array $record): int => is_numeric($record['price_cents'] ?? null) ? (int) $record['price_cents'] : 0,
             $installRecords,
@@ -536,12 +533,7 @@ final class MarketplaceExtensionsBrowser extends Component implements HasActions
         ));
         $containsBeta = collect($installRecords)
             ->contains(fn (array $record): bool => ($record['maturity'] ?? null) === 'beta');
-        $betaDependencyComposerNames = array_values(array_filter(array_map(
-            fn (array $record): ?string => ($record['maturity'] ?? null) === 'beta'
-                ? $this->recordComposerName($record)
-                : null,
-            $dependencyRecords,
-        )));
+        $betaDependencyComposerNames = $this->betaRecordComposerNames($dependencyRecords);
 
         $this->resolvedMarketplaceSelectionReview = [
             'explicit_records' => array_values($explicitRecords),
@@ -683,7 +675,7 @@ final class MarketplaceExtensionsBrowser extends Component implements HasActions
         if (in_array($installState, ['blocked', 'incompatible'], true)) {
             $blockReason = resolve(MarketplaceInstallActionPresenter::class)->blockReason($record);
 
-            if (in_array($blockReason, ['account_required', 'not_connected', 'email_verification_required'], true)) {
+            if (in_array($blockReason, ['account_required', 'not_connected', 'email_verification_required', 'capell_all_required'], true)) {
                 return null;
             }
 
@@ -703,7 +695,7 @@ final class MarketplaceExtensionsBrowser extends Component implements HasActions
 
         return (bool) ($record['is_paid'] ?? false)
             || (bool) ($record['activation_required'] ?? false)
-            || in_array($blockReason, ['account_required', 'not_connected', 'email_verification_required'], true)
+            || in_array($blockReason, ['account_required', 'not_connected', 'email_verification_required', 'capell_all_required'], true)
             || in_array($installState, ['purchase_required', 'activation_required'], true)
             || (is_numeric($record['price_cents'] ?? null) && (int) $record['price_cents'] > 0);
     }
@@ -788,6 +780,48 @@ final class MarketplaceExtensionsBrowser extends Component implements HasActions
         return is_string($record['composer_name'] ?? null) && $record['composer_name'] !== ''
             ? $record['composer_name']
             : null;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $records
+     * @return list<string>
+     */
+    private function recordComposerNames(array $records): array
+    {
+        $composerNames = [];
+
+        foreach ($records as $record) {
+            $composerName = $this->recordComposerName($record);
+
+            if ($composerName !== null && $composerName !== '0') {
+                $composerNames[] = $composerName;
+            }
+        }
+
+        return $composerNames;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $records
+     * @return list<string>
+     */
+    private function betaRecordComposerNames(array $records): array
+    {
+        $composerNames = [];
+
+        foreach ($records as $record) {
+            if (($record['maturity'] ?? null) !== 'beta') {
+                continue;
+            }
+
+            $composerName = $this->recordComposerName($record);
+
+            if ($composerName !== null && $composerName !== '0') {
+                $composerNames[] = $composerName;
+            }
+        }
+
+        return $composerNames;
     }
 
     /** @param array<string, mixed> $record */
