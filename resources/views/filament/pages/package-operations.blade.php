@@ -16,9 +16,7 @@
                 >
                     {{ __('capell-marketplace::marketplace.operations.page_title') }}
                 </h1>
-                <p
-                    class="mt-1 max-w-3xl text-sm text-gray-600 dark:text-gray-400"
-                >
+                <p class="mt-1 max-w-3xl text-sm text-gray-600 dark:text-gray-400">
                     {{ __('capell-marketplace::marketplace.operations.page_description') }}
                 </p>
             </div>
@@ -110,8 +108,8 @@
                             <div>
                                 {{ $selectedOperation->current_stage ?: '-' }}
                                 @if ($selectedOperation->progress_total)
-                                        ·
-                                        {{ $selectedOperation->progress_current }}/{{ $selectedOperation->progress_total }}
+                                    ·
+                                    {{ $selectedOperation->progress_current }}/{{ $selectedOperation->progress_total }}
                                 @endif
                             </div>
                             @if ($selectedOperation->progress_total)
@@ -250,8 +248,7 @@
                                 @if ($event->output_excerpt)
                                     <pre
                                         class="mt-3 max-h-48 overflow-auto rounded-md bg-gray-950 p-3 text-xs text-gray-100"
-                                    >
-{{ $event->output_excerpt }}</pre
+                                        >{{ $event->output_excerpt }}</pre
                                     >
                                 @endif
                             </li>
@@ -277,8 +274,7 @@
                             id="marketplace-diagnostic-bundle"
                             readonly
                             class="mt-2 h-72 w-full rounded-md border-gray-300 font-mono text-xs dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-                        >
-{{ $diagnosticBundle }}</textarea
+                            >{{ $diagnosticBundle }}</textarea
                         >
                     </div>
                 @endif

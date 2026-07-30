@@ -9,12 +9,8 @@
         <div class="mt-3 space-y-3">
             @foreach ($alerts as $alert)
                 <article>
-                    <h3 class="font-medium">
-                        {{ $alert->title }}
-                    </h3>
-                    <p class="mt-1">
-                        {{ $alert->message }}
-                    </p>
+                    <h3 class="font-medium">{{ $alert->title }}</h3>
+                    <p class="mt-1">{{ $alert->message }}</p>
                 </article>
             @endforeach
         </div>

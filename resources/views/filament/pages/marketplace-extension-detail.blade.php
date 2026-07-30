@@ -9,9 +9,7 @@
                 {{ __('capell-marketplace::marketplace.detail.unavailable_heading') }}
             </x-slot>
 
-            <p class="text-sm text-gray-600 dark:text-gray-300">
-                {{ $this->detailLoadError }}
-            </p>
+            <p class="text-sm text-gray-600 dark:text-gray-300">{{ $this->detailLoadError }}</p>
         </x-filament::section>
     @elseif ($detail)
         @php
@@ -30,9 +28,7 @@
                     class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"
                 >
                     <div class="max-w-3xl space-y-3">
-                        <p
-                            class="text-sm font-medium tracking-wide text-gray-500 uppercase dark:text-gray-400"
-                        >
+                        <p class="text-sm font-medium tracking-wide text-gray-500 uppercase dark:text-gray-400">
                             {{ $this->compatibilityLabel() }}
                         </p>
                         <h1
@@ -40,9 +36,7 @@
                         >
                             {{ $detail->name }}
                         </h1>
-                        <p
-                            class="text-base leading-7 text-gray-600 dark:text-gray-300"
-                        >
+                        <p class="text-base leading-7 text-gray-600 dark:text-gray-300">
                             {{ $detail->description ?? $detail->summary ?? __('capell-marketplace::marketplace.card.no_description') }}
                         </p>
                     </div>
@@ -50,19 +44,13 @@
                     <div
                         class="min-w-56 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-gray-900"
                     >
-                        <p
-                            class="text-xs font-medium tracking-wide text-gray-500 uppercase dark:text-gray-400"
-                        >
+                        <p class="text-xs font-medium tracking-wide text-gray-500 uppercase dark:text-gray-400">
                             {{ __('capell-marketplace::marketplace.card.price_label') }}
                         </p>
-                        <p
-                            class="mt-1 text-xl font-semibold text-gray-950 dark:text-white"
-                        >
+                        <p class="mt-1 text-xl font-semibold text-gray-950 dark:text-white">
                             {{ $this->priceLabel() }}
                         </p>
-                        <p
-                            class="mt-3 text-sm text-gray-600 dark:text-gray-300"
-                        >
+                        <p class="mt-3 text-sm text-gray-600 dark:text-gray-300">
                             {{ __('capell-marketplace::marketplace.detail.licence_status', ['status' => $this->licenceStatusLabel()]) }}
                         </p>
                     </div>
@@ -84,9 +72,7 @@
                                 >
                                     {{ __('capell-marketplace::marketplace.detail.screenshots_heading') }}
                                 </h2>
-                                <p
-                                    class="mt-1 text-sm text-gray-600 dark:text-gray-300"
-                                >
+                                <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
                                     {{ trans_choice('capell-marketplace::marketplace.detail.screenshots_count', $screenshots->count(), ['count' => $screenshots->count()]) }}
                                 </p>
                             </div>
@@ -171,9 +157,7 @@
                         >
                             {{ __('capell-marketplace::marketplace.detail.can_install_heading') }}
                         </h2>
-                        <p
-                            class="mt-1 text-lg font-semibold text-gray-950 dark:text-white"
-                        >
+                        <p class="mt-1 text-lg font-semibold text-gray-950 dark:text-white">
                             {{ $this->installDecisionLabel() }}
                         </p>
                     </div>
@@ -184,9 +168,7 @@
                         >
                             {{ __('capell-marketplace::marketplace.detail.why_not_heading') }}
                         </h3>
-                        <p
-                            class="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300"
-                        >
+                        <p class="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">
                             {{ $this->installDecisionReason() }}
                         </p>
                     </div>
@@ -197,9 +179,7 @@
                         >
                             {{ __('capell-marketplace::marketplace.detail.what_next_heading') }}
                         </h3>
-                        <p
-                            class="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300"
-                        >
+                        <p class="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">
                             {{ $this->nextActionLabel() }}
                         </p>
                     </div>
@@ -264,11 +244,11 @@
 
                 <div class="flex flex-wrap gap-2 text-sm">
                     @foreach ([
-                                  $this->stateLabel($detail->productTier),
-                                  $this->stateLabel($detail->effectiveCertification),
-                                  $this->stateLabel($detail->supportPolicy),
-                                  $this->stateLabel($detail->healthStatus),
-                              ] as $badge)
+                        $this->stateLabel($detail->productTier),
+                        $this->stateLabel($detail->effectiveCertification),
+                        $this->stateLabel($detail->supportPolicy),
+                        $this->stateLabel($detail->healthStatus),
+                    ] as $badge)
                         @if ($badge !== null)
                             <span
                                 class="rounded-md bg-gray-100 px-2 py-1 font-medium text-gray-700 dark:bg-white/10 dark:text-gray-200"
@@ -406,9 +386,7 @@
                                     {{ $document['title'] ?? __('capell-marketplace::marketplace.detail.documentation_item') }}
                                 </h3>
                                 @if (is_string($document['body'] ?? null))
-                                    <p
-                                        class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300"
-                                    >
+                                    <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
                                         {{ $document['body'] }}
                                     </p>
                                 @endif
@@ -430,17 +408,11 @@
                             <article
                                 class="rounded-lg border border-gray-200 bg-white p-4 text-sm shadow-sm dark:border-white/10 dark:bg-gray-900"
                             >
-                                <p
-                                    class="font-semibold text-gray-950 dark:text-white"
-                                >
+                                <p class="font-semibold text-gray-950 dark:text-white">
                                     {{ $version['version'] ?? __('capell-marketplace::marketplace.card.unknown_version') }}
                                 </p>
                                 @if (is_string($version['summary'] ?? null))
-                                    <p
-                                        class="mt-1 text-gray-600 dark:text-gray-300"
-                                    >
-                                        {{ $version['summary'] }}
-                                    </p>
+                                    <p class="mt-1 text-gray-600 dark:text-gray-300">{{ $version['summary'] }}</p>
                                 @endif
                             </article>
                         @endforeach

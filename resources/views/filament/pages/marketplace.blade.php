@@ -8,9 +8,7 @@
             class="flex flex-col gap-4 border-b border-gray-200 pb-5 md:flex-row md:items-end md:justify-between dark:border-white/10"
         >
             <div class="min-w-0">
-                <p
-                    class="text-xs font-semibold tracking-wide text-blue-600 uppercase dark:text-blue-400"
-                >
+                <p class="text-xs font-semibold tracking-wide text-blue-600 uppercase dark:text-blue-400">
                     {{ __('capell-marketplace::marketplace.page.eyebrow') }}
                 </p>
                 <h1
@@ -18,9 +16,7 @@
                 >
                     {{ __('capell-marketplace::marketplace.page.heading') }}
                 </h1>
-                <p
-                    class="mt-1 max-w-3xl text-sm text-gray-600 dark:text-gray-300"
-                >
+                <p class="mt-1 max-w-3xl text-sm text-gray-600 dark:text-gray-300">
                     {{ __('capell-marketplace::marketplace.page.description') }}
                 </p>
             </div>
@@ -53,19 +49,13 @@
                         @svg('heroicon-o-squares-2x2', 'h-5 w-5')
                     </div>
                     <div class="min-w-0">
-                        <p
-                            class="text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400"
-                        >
+                        <p class="text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
                             {{ __('capell-marketplace::marketplace.page.stats.catalogue_label') }}
                         </p>
-                        <p
-                            class="mt-1 text-xl font-semibold text-gray-950 dark:text-white"
-                        >
+                        <p class="mt-1 text-xl font-semibold text-gray-950 dark:text-white">
                             {{ __('capell-marketplace::marketplace.page.stats.catalogue_value') }}
                         </p>
-                        <p
-                            class="mt-1 text-xs text-gray-500 dark:text-gray-400"
-                        >
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                             {{ __('capell-marketplace::marketplace.page.stats.catalogue_description') }}
                         </p>
                     </div>
@@ -82,19 +72,13 @@
                         @svg('heroicon-o-shield-check', 'h-5 w-5')
                     </div>
                     <div class="min-w-0">
-                        <p
-                            class="text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400"
-                        >
+                        <p class="text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
                             {{ __('capell-marketplace::marketplace.page.stats.compatibility_label') }}
                         </p>
-                        <p
-                            class="mt-1 text-xl font-semibold text-gray-950 dark:text-white"
-                        >
+                        <p class="mt-1 text-xl font-semibold text-gray-950 dark:text-white">
                             {{ __('capell-marketplace::marketplace.page.stats.compatibility_value') }}
                         </p>
-                        <p
-                            class="mt-1 text-xs text-gray-500 dark:text-gray-400"
-                        >
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                             {{ __('capell-marketplace::marketplace.page.stats.compatibility_description') }}
                         </p>
                     </div>
@@ -111,19 +95,13 @@
                         @svg('heroicon-o-clipboard-document-check', 'h-5 w-5')
                     </div>
                     <div class="min-w-0">
-                        <p
-                            class="text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400"
-                        >
+                        <p class="text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
                             {{ __('capell-marketplace::marketplace.page.stats.review_label') }}
                         </p>
-                        <p
-                            class="mt-1 text-xl font-semibold text-gray-950 dark:text-white"
-                        >
+                        <p class="mt-1 text-xl font-semibold text-gray-950 dark:text-white">
                             {{ __('capell-marketplace::marketplace.page.stats.review_value') }}
                         </p>
-                        <p
-                            class="mt-1 text-xs text-gray-500 dark:text-gray-400"
-                        >
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                             {{ __('capell-marketplace::marketplace.page.stats.review_description') }}
                         </p>
                     </div>
@@ -140,19 +118,13 @@
                         @svg('heroicon-o-link', 'h-5 w-5')
                     </div>
                     <div class="min-w-0">
-                        <p
-                            class="text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400"
-                        >
+                        <p class="text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
                             {{ __('capell-marketplace::marketplace.page.stats.account_label') }}
                         </p>
-                        <p
-                            class="mt-1 text-xl font-semibold text-gray-950 dark:text-white"
-                        >
+                        <p class="mt-1 text-xl font-semibold text-gray-950 dark:text-white">
                             {{ $this->marketplaceConnection()->connectionTitle() }}
                         </p>
-                        <p
-                            class="mt-1 text-xs text-gray-500 dark:text-gray-400"
-                        >
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                             {{ $this->marketplaceConnection()->connectionBody() }}
                         </p>
                     </div>

@@ -92,9 +92,7 @@
                     >
                         <div class="min-w-0 space-y-1">
                             <div class="flex flex-wrap items-center gap-2">
-                                <p
-                                    class="truncate text-sm font-semibold text-gray-950 dark:text-white"
-                                >
+                                <p class="truncate text-sm font-semibold text-gray-950 dark:text-white">
                                     {{ $record['name'] ?? $composerName }}
                                 </p>
 
@@ -109,10 +107,10 @@
                                 @if (is_string($record['maturity_label'] ?? null) && $record['maturity_label'] !== '')
                                     <span
                                         @class([
-                                            'rounded-md px-2 py-0.5 text-xs font-medium ring-1',
-                                            'bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-300' => ($record['maturity'] ?? null) === 'beta',
-                                            'bg-gray-50 text-gray-600 ring-gray-500/20 dark:bg-white/5 dark:text-gray-300' => ($record['maturity'] ?? null) !== 'beta',
-                                        ])
+                                        'rounded-md px-2 py-0.5 text-xs font-medium ring-1',
+                                        'bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-300' => ($record['maturity'] ?? null) === 'beta',
+                                        'bg-gray-50 text-gray-600 ring-gray-500/20 dark:bg-white/5 dark:text-gray-300' => ($record['maturity'] ?? null) !== 'beta',
+                                    ])
                                     >
                                         {{ $record['maturity_label'] }}
                                     </span>
@@ -120,17 +118,11 @@
                             </div>
 
                             @if ($composerName !== '')
-                                <p
-                                    class="truncate text-xs text-gray-500 dark:text-gray-400"
-                                >
-                                    {{ $composerName }}
-                                </p>
+                                <p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ $composerName }}</p>
                             @endif
 
                             @if (is_array($record['install_confirmation'] ?? null) && is_string($record['install_confirmation']['summary'] ?? null))
-                                <p
-                                    class="text-sm text-gray-600 dark:text-gray-400"
-                                >
+                                <p class="text-sm text-gray-600 dark:text-gray-400">
                                     {{ $record['install_confirmation']['summary'] }}
                                 </p>
                             @endif
@@ -148,9 +140,7 @@
                     {{ __('capell-marketplace::marketplace.selection.dependencies_heading') }}
                 </h4>
                 @if ($dependencyCount > 0)
-                    <p
-                        class="text-sm font-medium text-sky-700 dark:text-sky-300"
-                    >
+                    <p class="text-sm font-medium text-sky-700 dark:text-sky-300">
                         {{ trans_choice('capell-marketplace::marketplace.selection.dependency_count', $dependencyCount, ['count' => $dependencyCount]) }}
                     </p>
                 @endif
@@ -172,9 +162,7 @@
                     >
                         <div class="min-w-0 space-y-1">
                             <div class="flex flex-wrap items-center gap-2">
-                                <p
-                                    class="truncate text-sm font-semibold text-gray-950 dark:text-white"
-                                >
+                                <p class="truncate text-sm font-semibold text-gray-950 dark:text-white">
                                     {{ $record['name'] ?? $composerName }}
                                 </p>
 
@@ -195,10 +183,10 @@
                                 @if (is_string($record['maturity_label'] ?? null) && $record['maturity_label'] !== '')
                                     <span
                                         @class([
-                                            'rounded-md px-2 py-0.5 text-xs font-medium ring-1',
-                                            'bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-300' => ($record['maturity'] ?? null) === 'beta',
-                                            'bg-gray-50 text-gray-600 ring-gray-500/20 dark:bg-white/5 dark:text-gray-300' => ($record['maturity'] ?? null) !== 'beta',
-                                        ])
+                                        'rounded-md px-2 py-0.5 text-xs font-medium ring-1',
+                                        'bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-300' => ($record['maturity'] ?? null) === 'beta',
+                                        'bg-gray-50 text-gray-600 ring-gray-500/20 dark:bg-white/5 dark:text-gray-300' => ($record['maturity'] ?? null) !== 'beta',
+                                    ])
                                     >
                                         {{ $record['maturity_label'] }}
                                     </span>
@@ -206,11 +194,7 @@
                             </div>
 
                             @if ($composerName !== '')
-                                <p
-                                    class="truncate text-xs text-gray-500 dark:text-gray-400"
-                                >
-                                    {{ $composerName }}
-                                </p>
+                                <p class="truncate text-xs text-gray-500 dark:text-gray-400">{{ $composerName }}</p>
                             @endif
                         </div>
                     </div>
@@ -274,8 +258,7 @@
                                 {{ __('capell-marketplace::marketplace.selection.impact_package_change') }}
                             </dt>
                             <dd>
-                                {{ ucfirst($impact['operation']) }}
-                                {{ $impact['target_version'] }}
+                                {{ ucfirst($impact['operation']) }} {{ $impact['target_version'] }}
                             </dd>
                         </div>
                     </dl>

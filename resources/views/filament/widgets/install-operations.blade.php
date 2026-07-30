@@ -59,9 +59,7 @@
                                                 </span>
                                             </div>
 
-                                            <p
-                                                class="mt-1 text-xs break-all text-gray-500 dark:text-gray-400"
-                                            >
+                                            <p class="mt-1 text-xs break-all text-gray-500 dark:text-gray-400">
                                                 {{ $composerNames->isNotEmpty() ? $composerNames->implode(', ') : __('capell-marketplace::marketplace.operations.flow_session_unknown_packages') }}
                                             </p>
                                         </div>
@@ -120,8 +118,7 @@
                                                 {{ __('capell-marketplace::marketplace.operations.flow_quote') }}
                                             </dt>
                                             <dd class="mt-1">
-                                                {{ strtoupper($session->quoted_currency ?? '') }}
-                                                {{ number_format($session->quoted_price_cents / 100, 2) }}
+                                                {{ strtoupper($session->quoted_currency ?? '') }} {{ number_format($session->quoted_price_cents / 100, 2) }}
                                             </dd>
                                         </div>
                                         <div>
@@ -167,9 +164,7 @@
                                     </dl>
 
                                     @if ($session->last_error || $session->failure_reason)
-                                        <p
-                                            class="bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300 rounded-lg px-3 py-2 text-sm"
-                                        >
+                                        <p class="bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300 rounded-lg px-3 py-2 text-sm">
                                             {{ $session->last_error ?? $session->failure_reason }}
                                         </p>
                                     @endif
@@ -184,19 +179,19 @@
                         class="flex flex-wrap gap-2 rounded-lg bg-gray-50 p-1 dark:bg-white/5"
                     >
                         @foreach ([
-                                      'active' => [
-                                          'label' => __('capell-marketplace::marketplace.operations.tab_active'),
-                                          'count' => $this->activeOperationsCount(),
-                                      ],
-                                      'failed' => [
-                                          'label' => __('capell-marketplace::marketplace.operations.tab_failed'),
-                                          'count' => $this->failedOperationsCount(),
-                                      ],
-                                      'all' => [
-                                          'label' => __('capell-marketplace::marketplace.operations.tab_all'),
-                                          'count' => $this->operations->count(),
-                                      ],
-                                  ] as $tab => $tabData)
+                            'active' => [
+                                'label' => __('capell-marketplace::marketplace.operations.tab_active'),
+                                'count' => $this->activeOperationsCount(),
+                            ],
+                            'failed' => [
+                                'label' => __('capell-marketplace::marketplace.operations.tab_failed'),
+                                'count' => $this->failedOperationsCount(),
+                            ],
+                            'all' => [
+                                'label' => __('capell-marketplace::marketplace.operations.tab_all'),
+                                'count' => $this->operations->count(),
+                            ],
+                        ] as $tab => $tabData)
                             <button
                                 type="button"
                                 wire:click="setOperationsTab('{{ $tab }}')"
@@ -262,9 +257,7 @@
                                             @endif
                                         </div>
 
-                                        <p
-                                            class="mt-1 truncate text-xs text-gray-500 dark:text-gray-400"
-                                        >
+                                        <p class="mt-1 truncate text-xs text-gray-500 dark:text-gray-400">
                                             {{ $operation->composer_name }}
                                         </p>
                                     </div>
@@ -339,9 +332,7 @@
                                 </dl>
 
                                 @if ($operation->failure_reason)
-                                    <p
-                                        class="bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300 rounded-lg px-3 py-2 text-sm"
-                                    >
+                                    <p class="bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300 rounded-lg px-3 py-2 text-sm">
                                         {{ $operation->failure_reason }}
                                     </p>
                                 @endif
@@ -360,8 +351,7 @@
                                                     </div>
                                                     <pre
                                                         class="max-h-80 overflow-auto bg-gray-950 p-3 text-xs leading-5 whitespace-pre-wrap text-gray-100"
-                                                    >
-{{ $logEntry['content'] }}</pre
+                                                        >{{ $logEntry['content'] }}</pre
                                                     >
                                                 </div>
                                             @endif

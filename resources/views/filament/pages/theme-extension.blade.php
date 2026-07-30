@@ -69,8 +69,7 @@
                             </option>
                             @foreach ($sites as $site)
                                 <option value="{{ $site->getKey() }}">
-                                    {{ $site->name }} -
-                                    {{ $site->theme?->name ?? __('capell-marketplace::marketplace.theme_extension.no_theme') }}
+                                    {{ $site->name }} - {{ $site->theme?->name ?? __('capell-marketplace::marketplace.theme_extension.no_theme') }}
                                 </option>
                             @endforeach
                         </select>
@@ -113,9 +112,7 @@
                                 >
                                     {{ $site->name }}
                                 </h3>
-                                <p
-                                    class="mt-1 text-sm text-gray-600 dark:text-gray-300"
-                                >
+                                <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
                                     {{ $site->theme?->name ?? __('capell-marketplace::marketplace.theme_extension.no_theme') }}
                                 </p>
                             </div>
@@ -133,9 +130,7 @@
             </div>
 
             @if ($theme === null)
-                <p
-                    class="mt-4 rounded-lg bg-yellow-50 p-3 text-sm text-yellow-900 ring-1 ring-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-100 dark:ring-yellow-400/40"
-                >
+                <p class="mt-4 rounded-lg bg-yellow-50 p-3 text-sm text-yellow-900 ring-1 ring-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-100 dark:ring-yellow-400/40">
                     {{ __('capell-marketplace::marketplace.theme_extension.theme_will_be_created') }}
                 </p>
             @endif

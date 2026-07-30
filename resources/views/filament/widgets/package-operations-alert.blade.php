@@ -16,9 +16,7 @@
                         >
                             {{ __('capell-marketplace::marketplace.operations.alert_heading') }}
                         </h2>
-                        <p
-                            class="mt-1 text-sm text-gray-600 dark:text-gray-300"
-                        >
+                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
                             {{
                                 trans_choice('capell-marketplace::marketplace.operations.alert_summary', $activeCount + $attentionCount, [
                                     'active' => $activeCount,
@@ -83,9 +81,7 @@
                                             @endif
                                         </div>
 
-                                        <p
-                                            class="mt-1 text-sm break-words text-gray-700 dark:text-gray-200"
-                                        >
+                                        <p class="mt-1 text-sm break-words text-gray-700 dark:text-gray-200">
                                             {{ str($operation->failure_reason ?? __('capell-marketplace::marketplace.operations.notification_unknown_reason'))->limit(240) }}
                                         </p>
                                     </div>
