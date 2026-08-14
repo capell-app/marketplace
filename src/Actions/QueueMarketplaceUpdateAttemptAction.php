@@ -11,6 +11,7 @@ use Capell\Marketplace\Data\ExtensionListingData;
 use Capell\Marketplace\Data\MarketplaceInstallActorData;
 use Capell\Marketplace\Data\MarketplaceInstallAttemptData;
 use Capell\Marketplace\Data\MarketplaceInstallAttemptTransitionData;
+use Capell\Marketplace\Data\MarketplaceInstallDeploymentData;
 use Capell\Marketplace\Enums\MarketplaceInstallAttemptEventLevel;
 use Capell\Marketplace\Enums\MarketplaceInstallFailureStage;
 use Capell\Marketplace\Enums\MarketplaceInstallIntentStatus;
@@ -49,6 +50,7 @@ final class QueueMarketplaceUpdateAttemptAction
         array $context = [],
         ?Authenticatable $user = null,
         ?string $idempotencyKey = null,
+        bool $dispatch = true,
     ): MarketplaceInstallAttempt {
         $existingAttempt = $this->findIdempotentAttempt($idempotencyKey);
 
@@ -75,6 +77,7 @@ final class QueueMarketplaceUpdateAttemptAction
                 context: $context,
                 user: $user,
                 idempotencyKey: $idempotencyKey,
+                dispatch: $dispatch,
             );
         } finally {
             $lock->release();
@@ -93,6 +96,7 @@ final class QueueMarketplaceUpdateAttemptAction
         array $context,
         ?Authenticatable $user,
         ?string $idempotencyKey,
+        bool $dispatch,
     ): MarketplaceInstallAttempt {
         $existingAttempt = $this->findIdempotentAttempt($idempotencyKey);
 
@@ -151,6 +155,25 @@ final class QueueMarketplaceUpdateAttemptAction
                     failureStage: MarketplaceInstallFailureStage::Preflight,
                 ),
             );
+        }
+
+        if ($acquisition->requiresDeployment) {
+            $claimedAttempt = ClaimMarketplaceInstallDeploymentPublicationAction::run($attempt);
+
+            if (! $claimedAttempt instanceof MarketplaceInstallAttempt) {
+                return $attempt->refresh();
+            }
+
+            $attempt = RecordMarketplaceInstallDeploymentAction::run(
+                $claimedAttempt,
+                new MarketplaceInstallDeploymentData(
+                    PublishMarketplaceComposerChangeAction::run($acquisition, $listing, $claimedAttempt),
+                ),
+            );
+        }
+
+        if (! $dispatch) {
+            return $attempt;
         }
 
         return DispatchMarketplaceUpdateAttemptAction::run(
