@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Capell\Admin\Actions\Extensions\EnrichExtensionTableRecordsAction;
+use Capell\Admin\Filament\Pages\ExtensionsPage;
 use Capell\Core\Facades\CapellCore;
 use Capell\Core\Support\Manifest\CapellManifestData;
 use Capell\Marketplace\Actions\BuildMarketplaceInstallPolicyEvidenceAction;
@@ -46,12 +47,14 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\ComponentAttributeBag;
+use Spatie\Permission\Models\Permission;
 
 uses(CreatesAdminUser::class);
 
 beforeEach(function (): void {
     Cache::flush();
     test()->actingAsAdmin();
+    test()->authenticatedUser()->givePermissionTo(Permission::findOrCreate(ExtensionsPage::MANAGE_PERMISSION, 'web'));
 
     config([
         'capell-marketplace.marketplace.base_url' => 'https://marketplace.test/api',
@@ -423,9 +426,7 @@ it('marks marketplace browse as unavailable when the catalogue request fails', f
         ->and($provider->marketplaceBrowseUnavailable())->toBeTrue()
         ->and($table->marketplaceEmptyStateHeading())->toBe(__('capell-marketplace::marketplace.filters.unavailable_heading'))
         ->and($table->marketplaceEmptyStateDescription())->toBe(
-            __('capell-marketplace::marketplace.filters.unavailable_description')
-            . ' '
-            . __('capell-marketplace::marketplace.filters.unavailable_reason', ['reason' => 'Unavailable']),
+            __('capell-marketplace::marketplace.catalogue_failures.service'),
         );
 
     Http::assertSent(fn ($request): bool => str_starts_with((string) $request->url(), 'https://marketplace.test/api/extensions?')
@@ -441,7 +442,7 @@ it('marks marketplace browse as unavailable when the catalogue request fails', f
         && ! array_key_exists('max_price_cents', $request->data()));
 });
 
-it('shows marketplace validation details when catalogue browsing fails', function (): void {
+it('explains catalogue configuration failures without remote validation details', function (): void {
     Http::fake([
         'https://marketplace.test/api/extensions*' => Http::response([
             'message' => 'The given data was invalid.',
@@ -458,8 +459,8 @@ it('shows marketplace validation details when catalogue browsing fails', functio
 
     expect($records)->toBeEmpty()
         ->and($provider->marketplaceBrowseUnavailable())->toBeTrue()
-        ->and($provider->marketplaceBrowseUnavailableReason())->toBe('The instance id field must be a valid UUID.')
-        ->and($table->marketplaceEmptyStateDescription())->toContain('The instance id field must be a valid UUID.');
+        ->and($provider->marketplaceBrowseUnavailableReason())->toBe(__('capell-marketplace::marketplace.catalogue_failures.configuration'))
+        ->and($table->marketplaceEmptyStateDescription())->not->toContain('The instance id field must be a valid UUID.');
 });
 
 it('uses the generic empty state when marketplace browsing is available', function (): void {
@@ -893,7 +894,9 @@ it('queues a background refresh when serving stale marketplace table results', f
 
         $records = $provider->paginatedRecords();
 
-        expect($records->items()[0]['slug'])->toBe('cached-suite');
+        expect($records->items()[0]['slug'])->toBe('cached-suite')
+            ->and($provider->catalogueFreshness()->stale)->toBeTrue()
+            ->and($provider->catalogueFreshness()->observedAt)->not->toBeNull();
 
         Bus::assertDispatchedAfterResponse(WarmMarketplaceCatalogueCacheJob::class);
         Http::assertSentCount(1);
@@ -1740,7 +1743,7 @@ it('records a pending theme install intent and append-only attempt after theme i
         ->and($intent->composer_name)->toBe('capell-app/theme-agency')
         ->and($intent->kind)->toBe('theme')
         ->and($intent->status)->toBe(MarketplaceInstallIntentStatus::Pending)
-        ->and($intent->composer_command)->toBe('composer require capell-app/theme-agency:^1.2.0')
+        ->and($intent->composer_command)->toBe("composer require 'capell-app/theme-agency:^1.2.0'")
         ->and($intent->version_constraint)->toBe('^1.2.0')
         ->and($intent->metadata)->toMatchArray([
             'image_url' => 'https://marketplace.test/images/theme-agency.png',
@@ -1856,7 +1859,7 @@ it('records deployment published attempts when deployment publisher returns a pu
     $attempt = MarketplaceInstallAttempt::query()->sole();
 
     expect($attempt->status)->toBe(MarketplaceInstallIntentStatus::Queued)
-        ->and($attempt->composer_command)->toBe('composer require capell-app/seo-suite:^1.0.0')
+        ->and($attempt->composer_command)->toBe("composer require 'capell-app/seo-suite:^1.0.0'")
         ->and($attempt->queued_at)->not->toBeNull()
         ->and($attempt->deployment)->toMatchArray([
             'status' => 'published',
@@ -1895,7 +1898,7 @@ it('can install filament peek through the admin marketplace catalogue', function
     expect($attempt->status)->toBe(MarketplaceInstallIntentStatus::Queued)
         ->and($attempt->extension_slug)->toBe('filament-peek')
         ->and($attempt->composer_name)->toBe('capell-app/filament-peek')
-        ->and($attempt->composer_command)->toBe('composer require capell-app/filament-peek:^4.1.2')
+        ->and($attempt->composer_command)->toBe("composer require 'capell-app/filament-peek:^4.1.2'")
         ->and($attempt->version_constraint)->toBe('^4.1.2')
         ->and($attempt->requested_options)->toBeNull()
         ->and($attempt->eligibility)->toMatchArray([
@@ -1952,7 +1955,7 @@ it('records deployment published attempts when deployment publisher returns a co
     $attempt = MarketplaceInstallAttempt::query()->sole();
 
     expect($attempt->status)->toBe(MarketplaceInstallIntentStatus::Queued)
-        ->and($attempt->composer_command)->toBe('composer require capell-app/seo-suite:^1.0.0')
+        ->and($attempt->composer_command)->toBe("composer require 'capell-app/seo-suite:^1.0.0'")
         ->and($attempt->deployment)->toMatchArray([
             'status' => 'published',
             'type' => 'commit',
@@ -1998,7 +2001,7 @@ it('falls back to composer command when no active deployment connection exists',
     $attempt = MarketplaceInstallAttempt::query()->sole();
 
     expect($attempt->status)->toBe(MarketplaceInstallIntentStatus::Queued)
-        ->and($attempt->composer_command)->toBe('composer require capell-app/seo-suite:^1.0.0')
+        ->and($attempt->composer_command)->toBe("composer require 'capell-app/seo-suite:^1.0.0'")
         ->and($attempt->failure_reason)->toBeNull()
         ->and($attempt->deployment)->toMatchArray([
             'status' => 'unavailable',
@@ -2050,7 +2053,7 @@ it('records deployment failures separately before showing composer fallback', fu
     $attempt = MarketplaceInstallAttempt::query()->sole();
 
     expect($attempt->status)->toBe(MarketplaceInstallIntentStatus::Queued)
-        ->and($attempt->composer_command)->toBe('composer require capell-app/seo-suite:^1.0.0')
+        ->and($attempt->composer_command)->toBe("composer require 'capell-app/seo-suite:^1.0.0'")
         ->and($attempt->failure_reason)->toBe((string) __('capell-marketplace::marketplace.operations.deployment_failed_notification', [
             'reason' => $redactedReason,
         ]))
@@ -2089,7 +2092,7 @@ it('guides admins to connect marketplace when install authorization needs a regi
     Http::assertSent(fn ($request): bool => $request->url() === 'https://marketplace.test/api/extensions/private-suite');
 });
 
-it('redirects account-required installs to Capell App login when connection startup fails', function (): void {
+it('keeps account-required installs local when connection startup fails', function (): void {
     config([
         'app.url' => 'https://example.test',
         'capell-marketplace.instance.id' => null,
@@ -2121,7 +2124,8 @@ it('redirects account-required installs to Capell App login when connection star
         redirectAccountActions: true,
     );
 
-    expect($redirectUrl)->toBe('https://capell.test/login');
+    expect($redirectUrl)->toBeNull()
+        ->and(FilamentNotificationSnapshots::pull()->last()?->getBody())->toBe(__('capell-marketplace::marketplace.connection_failures.service'));
 });
 
 it('shows purchase guidance when marketplace requires checkout before installation', function (): void {

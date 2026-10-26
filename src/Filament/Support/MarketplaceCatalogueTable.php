@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Capell\Marketplace\Filament\Support;
 
+use Capell\Admin\Filament\Pages\ExtensionsPage;
 use Capell\Marketplace\Actions\InstallMarketplaceExtensionAction;
 use Capell\Marketplace\Actions\UpdateMarketplaceExtensionAction;
 use Capell\Marketplace\Data\MarketplaceInstallActorData;
@@ -31,6 +32,8 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Contracts\View\Factory;
+use Illuminate\Contracts\View\View;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -60,6 +63,11 @@ final class MarketplaceCatalogueTable
                 perPage: $this->recordProvider->normalizeRecordsPerPage($recordsPerPage),
                 includeLocalExtensionState: $includeLocalExtensionState,
             ))
+            ->header(function (Table $table): Factory|View {
+                $table->getLivewire()->getTableRecords();
+
+                return view('capell-marketplace::filament.tables.catalogue-freshness', ['freshness' => $this->recordProvider->catalogueFreshness()]);
+            })
             ->searchable()
             ->searchPlaceholder((string) __('capell-marketplace::marketplace.filters.search_placeholder'))
             ->searchDebounce('300ms')
@@ -93,7 +101,14 @@ final class MarketplaceCatalogueTable
             ->paginated(MarketplaceCatalogueRecordProvider::TABLE_PAGE_OPTIONS)
             ->defaultPaginationPageOption(MarketplaceCatalogueRecordProvider::DEFAULT_TABLE_PAGE_OPTION)
             ->emptyStateHeading(fn (): string => $this->marketplaceEmptyStateHeading())
-            ->emptyStateDescription(fn (): string => $this->marketplaceEmptyStateDescription());
+            ->emptyStateDescription(fn (): string => $this->marketplaceEmptyStateDescription())
+            ->emptyStateActions([
+                Action::make('retryMarketplaceCatalogue')
+                    ->label((string) __('capell-marketplace::marketplace.filters.retry'))
+                    ->icon(Heroicon::OutlinedArrowPath)
+                    ->visible(fn (): bool => $this->recordProvider->marketplaceBrowseUnavailable())
+                    ->action('$refresh'),
+            ]);
     }
 
     public function marketplaceEmptyStateHeading(): string
@@ -108,12 +123,8 @@ final class MarketplaceCatalogueTable
     public function marketplaceEmptyStateDescription(): string
     {
         if ($this->recordProvider->marketplaceBrowseUnavailable()) {
-            $description = (string) __('capell-marketplace::marketplace.filters.unavailable_description');
-            $reason = $this->recordProvider->marketplaceBrowseUnavailableReason();
-
-            return is_string($reason) && $reason !== ''
-                ? $description . ' ' . __('capell-marketplace::marketplace.filters.unavailable_reason', ['reason' => $reason])
-                : $description;
+            return $this->recordProvider->marketplaceBrowseUnavailableReason()
+                ?? (string) __('capell-marketplace::marketplace.filters.unavailable_description');
         }
 
         return (string) __('capell-marketplace::marketplace.filters.empty');
@@ -158,6 +169,8 @@ final class MarketplaceCatalogueTable
      */
     public function installExtension(array $arguments, array $data = [], bool $redirectAccountActions = false): ?string
     {
+        abort_unless(ExtensionsPage::canManageExtensions(), 403);
+
         $user = auth()->user();
 
         return InstallMarketplaceExtensionAction::run(MarketplaceInstallRequestData::make(
@@ -194,6 +207,8 @@ final class MarketplaceCatalogueTable
      */
     public function updateExtension(array $record): MarketplaceInstallAttempt
     {
+        abort_unless(ExtensionsPage::canManageExtensions(), 403);
+
         $user = auth()->user();
 
         return UpdateMarketplaceExtensionAction::run(
@@ -255,7 +270,7 @@ final class MarketplaceCatalogueTable
             ->color(fn (array $record): string => $this->installActionPresenter->color($record))
             ->tooltip(fn (array $record): string => $this->installActionPresenter->tooltip($record))
             ->icon(Heroicon::OutlinedArrowPath)
-            ->visible(fn (array $record): bool => $this->installActionPresenter->canUpdate($record))
+            ->visible(fn (array $record): bool => ExtensionsPage::canManageExtensions() && $this->installActionPresenter->canUpdate($record))
             ->requiresConfirmation()
             ->modalHeading(fn (array $record): string => (string) __('capell-marketplace::marketplace.updates.confirm_heading', [
                 'name' => (string) ($record['name'] ?? $record['composer_name'] ?? ''),

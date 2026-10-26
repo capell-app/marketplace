@@ -13,13 +13,16 @@ use Capell\Core\Support\Manifest\CapellManifestData;
 use Capell\Core\Support\Manifest\ManifestLoader;
 use Capell\Core\Support\Manifest\ManifestValidator;
 use Capell\Core\Support\PackageRegistry\CapellPackageRegistry;
+use Capell\Marketplace\Actions\AssertMarketplaceUpdateConstraintAction;
 use Capell\Marketplace\Actions\ClaimMarketplaceInstallAttemptAction;
 use Capell\Marketplace\Actions\EvaluateMarketplaceEnvironmentReadinessAction;
 use Capell\Marketplace\Actions\FinalizeMarketplaceInstallAttemptAction;
 use Capell\Marketplace\Actions\FinalizeMarketplaceInstallOperationTelemetryAction;
 use Capell\Marketplace\Actions\FindStuckMarketplaceInstallOperationsAction;
 use Capell\Marketplace\Actions\PackageIsAvailableForLifecycleAction;
+use Capell\Marketplace\Actions\PropagateMarketplaceRuntimeStateAction;
 use Capell\Marketplace\Actions\RecordMarketplaceInstallAttemptEventAction;
+use Capell\Marketplace\Actions\RecoverMarketplaceRuntimePropagationAction;
 use Capell\Marketplace\Actions\RedactMarketplaceDiagnosticContextAction;
 use Capell\Marketplace\Actions\RestoreComposerStateAction;
 use Capell\Marketplace\Actions\RunPostOperationHealthCheckAction;
@@ -35,6 +38,8 @@ use Capell\Marketplace\Enums\MarketplaceInstallAttemptEventLevel;
 use Capell\Marketplace\Enums\MarketplaceInstallFailureStage;
 use Capell\Marketplace\Enums\MarketplaceInstallFailureType;
 use Capell\Marketplace\Enums\MarketplaceInstallIntentStatus;
+use Capell\Marketplace\Enums\MarketplaceOperationType;
+use Capell\Marketplace\Enums\MarketplaceRuntimePropagationStatus;
 use Capell\Marketplace\Exceptions\MarketplaceHealthCheckFailedException;
 use Capell\Marketplace\Models\MarketplaceInstallAttempt;
 use Capell\Marketplace\Support\MarketplaceOperationVocabulary;
@@ -391,6 +396,8 @@ abstract class AbstractMarketplaceOperationJob implements ShouldBeUnique, Should
         }
 
         if (! $attempt->status->isActiveInstallOperation()) {
+            RecoverMarketplaceRuntimePropagationAction::run($attempt, interrupted: true);
+
             return;
         }
 
@@ -646,6 +653,26 @@ abstract class AbstractMarketplaceOperationJob implements ShouldBeUnique, Should
         );
     }
 
+    protected function propagateRuntimeState(MarketplaceInstallAttempt $attempt): ?string
+    {
+        try {
+            return PropagateMarketplaceRuntimeStateAction::run($attempt);
+        } catch (Throwable $throwable) {
+            report($throwable);
+            $attempt->refresh()->forceFill([
+                'context' => [
+                    ...($attempt->context ?? []),
+                    'runtime_propagation' => MarketplaceRuntimePropagationStatus::RecoveryRequired->value,
+                ],
+            ])->save();
+            $this->recordEvent($attempt, MarketplaceInstallAttemptEventLevel::Warning, 'timeline_runtime_propagation_failed', MarketplaceInstallFailureStage::Notification, [
+                'reason' => $throwable->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
     private static function positiveConfiguredSeconds(string $key, int $default): int
     {
         $configured = config($key, $default);
@@ -699,6 +726,18 @@ abstract class AbstractMarketplaceOperationJob implements ShouldBeUnique, Should
 
         if (! $attempt instanceof MarketplaceInstallAttempt) {
             return;
+        }
+
+        // Persisted attempts and retries must be checked against today's installed
+        // release, not their acquisition-time update_from_version context.
+        if ($attempt->operation === MarketplaceOperationType::Update) {
+            try {
+                AssertMarketplaceUpdateConstraintAction::run($attempt->composer_name, $attempt->version_constraint ?? '');
+            } catch (Throwable $throwable) {
+                $this->markComposerThrowable($attempt, $throwable);
+
+                return;
+            }
         }
 
         // Before anything is allowed to touch composer.json, composer.lock or

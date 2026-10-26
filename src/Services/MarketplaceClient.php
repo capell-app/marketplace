@@ -17,6 +17,8 @@ use Capell\Marketplace\Data\MarketplaceCataloguePageData;
 use Capell\Marketplace\Data\MarketplaceCatalogueQueryData;
 use Capell\Marketplace\Data\MarketplaceInstallAuthorizationData;
 use Capell\Marketplace\Data\MarketplaceUpgradeAuthorizationData;
+use Capell\Marketplace\Enums\MarketplaceCatalogueFailure;
+use Capell\Marketplace\Exceptions\MarketplaceCatalogueException;
 use Capell\Marketplace\Exceptions\PurchaseRequiredException;
 use Capell\Marketplace\Models\MarketplaceInstance;
 use Capell\Marketplace\Support\MarketplaceApprovalUrl;
@@ -145,6 +147,9 @@ final class MarketplaceClient
         bool $allowStale = false,
         bool $forceRefresh = false,
     ): MarketplaceCataloguePageData {
+        // Check configuration before cached reads as well as background warming.
+        $this->marketplaceBaseUrl();
+
         $marketplaceContext = $this->marketplaceContext();
         $cachePayload = $query->toCachePayload($marketplaceContext);
         $cacheKey = 'capell-marketplace.marketplace.extensions-page.' . hash('xxh3', JsonCodec::encode($cachePayload));
@@ -162,18 +167,27 @@ final class MarketplaceClient
             $cachedResponse = Cache::get($staleCacheKey);
 
             if (is_array($cachedResponse)) {
-                return $this->cataloguePageFromResponse($cachedResponse, $query, stale: true);
+                return $this->cataloguePageFromResponse($cachedResponse, $query, stale: true, refreshFailed: Cache::get($cacheKey . '.refresh-failed') === true);
             }
         }
 
         $responseData = $this->fetchCataloguePage($query, $marketplaceContext);
+        $responseData['observed_at'] = now()->toAtomString();
         $ttl = config('capell-marketplace.marketplace.cache_ttl_seconds', 300);
         $staleTtl = config('capell-marketplace.marketplace.stale_cache_ttl_seconds', 3600);
 
+        Cache::forget($cacheKey . '.refresh-failed');
         Cache::put($cacheKey, $responseData, $ttl);
         Cache::put($staleCacheKey, $responseData, $staleTtl);
 
         return $this->cataloguePageFromResponse($responseData, $query);
+    }
+
+    public function recordCatalogueWarmFailure(MarketplaceCatalogueQueryData $query): void
+    {
+        $payload = $this->catalogueCachePayload($query);
+        $key = 'capell-marketplace.marketplace.extensions-page.' . hash('xxh3', JsonCodec::encode($payload));
+        Cache::put($key . '.refresh-failed', true, config('capell-marketplace.marketplace.stale_cache_ttl_seconds', 3600));
     }
 
     /**
@@ -570,6 +584,7 @@ final class MarketplaceClient
         array $responseData,
         MarketplaceCatalogueQueryData $query,
         bool $stale = false,
+        bool $refreshFailed = false,
     ): MarketplaceCataloguePageData {
         $items = $responseData['data'] ?? [];
 
@@ -597,6 +612,8 @@ final class MarketplaceClient
             perPage: $perPage,
             nextPageUrl: is_string($nextPageUrl) && $nextPageUrl !== '' ? $nextPageUrl : null,
             stale: $stale,
+            observedAt: is_string($responseData['observed_at'] ?? null) ? $responseData['observed_at'] : null,
+            refreshFailed: $refreshFailed,
         );
     }
 
@@ -626,7 +643,20 @@ final class MarketplaceClient
 
     private function marketplaceUrl(string $path): string
     {
-        return config('capell-marketplace.marketplace.base_url') . $path;
+        return $this->marketplaceBaseUrl() . $path;
+    }
+
+    private function marketplaceBaseUrl(): string
+    {
+        $baseUrl = config('capell-marketplace.marketplace.base_url');
+
+        throw_if(! is_string($baseUrl)
+            || filter_var($baseUrl, FILTER_VALIDATE_URL) === false
+            || ! in_array(parse_url($baseUrl, PHP_URL_SCHEME), ['https', 'http'], true)
+            || parse_url($baseUrl, PHP_URL_USER) !== null
+            || parse_url($baseUrl, PHP_URL_PASS) !== null, MarketplaceCatalogueException::class, MarketplaceCatalogueFailure::Configuration);
+
+        return $baseUrl;
     }
 
     /**
@@ -760,12 +790,16 @@ final class MarketplaceClient
         }
 
         if (! $response->successful()) {
-            throw new RuntimeException($this->friendlyResponseMessage($response, $failureMessage));
+            throw new MarketplaceCatalogueException(match (true) {
+                in_array($response->status(), [401, 422], true) => MarketplaceCatalogueFailure::Configuration,
+                $response->serverError() || $response->status() === 429 => MarketplaceCatalogueFailure::Service,
+                default => MarketplaceCatalogueFailure::Verification,
+            }, $failureMessage);
         }
 
         $data = $response->json('data');
 
-        throw_unless(is_array($data), RuntimeException::class, $this->friendlyResponseMessage($response, $missingDataMessage));
+        throw_unless(is_array($data), MarketplaceCatalogueException::class, MarketplaceCatalogueFailure::Verification, $missingDataMessage);
 
         return ['response' => $response, 'data' => $data];
     }
