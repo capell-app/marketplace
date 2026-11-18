@@ -65,7 +65,7 @@ return [
         'catalogue_page_limit' => env('CAPELL_MARKETPLACE_CATALOGUE_PAGE_LIMIT', 3),
         'webhook_url' => env('CAPELL_MARKETPLACE_WEBHOOK_URL'),
         'webhook_secret' => env('CAPELL_MARKETPLACE_WEBHOOK_SECRET'),
-        'troubleshooting_url' => env('CAPELL_MARKETPLACE_TROUBLESHOOTING_URL', 'https://docs.capell.app/extensions/marketplace-heartbeat'),
+        'troubleshooting_url' => env('CAPELL_MARKETPLACE_TROUBLESHOOTING_URL', 'https://docs.capell.app/core/operations/debugging-marketplace/'),
     ],
     /*
      * The scheduled heartbeat. Until this existed the heartbeat was
@@ -76,6 +76,12 @@ return [
     'heartbeat' => [
         'scheduled' => env('CAPELL_MARKETPLACE_HEARTBEAT_SCHEDULED', true),
         'at' => env('CAPELL_MARKETPLACE_HEARTBEAT_AT', '02:40'),
+        /*
+         * Opt-in only. When true, the next heartbeat after the first fully passing
+         * `capell:doctor` run reports that moment once (a timestamp, nothing else).
+         * Off, nothing is recorded and nothing extra is sent.
+         */
+        'share_setup_milestones' => env('CAPELL_MARKETPLACE_SHARE_SETUP_MILESTONES', false),
     ],
     /*
      * Unattended updates for extensions whose per-extension policy allows them.

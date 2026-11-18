@@ -430,7 +430,7 @@ return [
     ],
     'operations' => [
         'active_count' => '{1} :count active install|[2,*] :count active installs',
-        'alert_heading' => 'Package Operations',
+        'alert_heading' => 'Package operations',
         'alert_summary' => '{0} No package operations need attention.|[1,*] :active active, :attention needing attention.',
         'attention_count' => '{1} :count needs attention|[2,*] :count need attention',
         'cancel' => 'Cancel',
@@ -542,7 +542,7 @@ return [
         'mark_resolved' => 'Mark resolved',
         'marketplace' => 'Marketplace',
         'page_description' => 'Review Marketplace install attempts, preflight checks, Composer output, deployment handoff state, retries, and redacted diagnostics.',
-        'page_title' => 'Package Operations',
+        'page_title' => 'Package operations',
         'preflight_failed' => 'Marketplace install preflight failed.',
         'progress' => 'Operation progress',
         'started_at' => 'Started',
@@ -578,11 +578,11 @@ return [
         // pending migration on the site, whichever package shipped it. The
         // ledger records what actually ran, so the message reports those names
         // rather than attributing them to the extension being updated.
-        'rollback_schema_retained' => 'This update of :package failed and Capell restored the previous version of the code. The database migrations that ran during it were NOT undone and cannot be — restoring composer.lock does not un-run a migration, so this site is now running older code against a newer schema. Migrations applied: :migrations. Note that an update publishes and runs every pending migration on this site, so this list may include migrations belonging to other packages, and those packages are now ahead of the code as well. Check the site, then either fix the cause and re-run the update, or restore the database from a backup taken before this update. Original failure: :error',
-        'rollback_schema_unverified' => 'This update of :package failed and Capell restored the previous version of the code. Capell could NOT verify whether any database migration ran before the failure, so it cannot tell you the schema is unchanged — restoring composer.lock does not un-run a migration. Check the migrations table and the site before deciding whether to re-run the update or restore the database from a backup taken before this update. Original failure: :error',
+        'rollback_schema_retained' => 'This update of :package failed and Capell restored the previous version of the code. The database migrations that ran during it were NOT undone and cannot be, because restoring composer.lock does not un-run a migration, so this site is now running older code against a newer schema. Migrations applied: :migrations. Note that an update publishes and runs every pending migration on this site, so this list may include migrations belonging to other packages, and those packages are now ahead of the code as well. Check the site, then either fix the cause and re-run the update, or restore the database from a backup taken before this update. Original failure: :error',
+        'rollback_schema_unverified' => 'This update of :package failed and Capell restored the previous version of the code. Capell could NOT verify whether any database migration ran before the failure, so it cannot tell you the schema is unchanged, because restoring composer.lock does not un-run a migration. Check the migrations table and the site before deciding whether to re-run the update or restore the database from a backup taken before this update. Original failure: :error',
         'rollback_failed' => 'The package change failed and could NOT be rolled back automatically, so this application may be left inconsistent. Recover it manually by running "composer install --no-interaction --no-scripts" from the application root in a trusted terminal, then check the site. Original failure: :error Rollback failure: :rollback_error',
         'cancelled_after_lifecycle' => 'The uninstall was cancelled after the extension had already been torn down. Its data and registrations are gone; the package files are still on this site. Reinstall the extension to put it back.',
-        'rollback_lifecycle_retained' => 'This uninstall of :package failed and Capell restored the package files. The extension\'s own uninstall already ran and was NOT undone — restoring composer.lock does not put back tables, settings or registrations an extension removed itself. This site now has the package on disk with the extension torn down. Reinstall the extension to bring it back, or re-run the uninstall to finish removing it. Original failure: :error',
+        'rollback_lifecycle_retained' => "This uninstall of :package failed and Capell restored the package files. The extension's own uninstall already ran and was NOT undone, because restoring composer.lock does not put back tables, settings or registrations an extension removed itself. This site now has the package on disk with the extension torn down. Reinstall the extension to bring it back, or re-run the uninstall to finish removing it. Original failure: :error",
         'timeline_composer_skipped_package_retained' => 'Composer was not run because the package files were kept.',
         'timeline_composer_skipped_activation_only' => 'Composer was not run because this operation only refreshed the marketplace activation.',
         'timeline_package_removed' => 'Package removed from the Capell registry.',
@@ -642,7 +642,7 @@ return [
         'view' => 'View',
         'view_logs' => 'View logs',
         'widget_description' => 'Marketplace Composer installs that are active, cancelled during handoff, or need manual follow-up.',
-        'widget_heading' => 'Package Operations',
+        'widget_heading' => 'Package operations',
 
         /*
          * Per-operation wording, resolved by MarketplaceOperationVocabulary.
@@ -880,7 +880,7 @@ return [
         'bulk_none_title' => 'Nothing to update',
         'bulk_none_body' => 'None of the selected extensions has an update this site is entitled to install.',
         'auto_skipped_pre_release' => 'The newest version (:version) is a pre-release. Automatic updates only install final releases; update this extension by hand if you want the pre-release.',
-        'auto_skipped_pending_migrations' => 'Other packages (:packages) have database migrations this site has not run yet. An update publishes and runs every pending migration, not just this extension\'s, so an unattended update here would also change the schema for those packages — and if this update then failed its health check, they would be left running older code against a newer schema. Run capell:upgrade (or update this extension by hand) to clear the pending migrations first.',
+        'auto_skipped_pending_migrations' => "Other packages (:packages) have database migrations this site has not run yet. An update publishes and runs every pending migration, not just this extension's, so an unattended update here would also change the schema for those packages, and if this update then failed its health check, they would be left running older code against a newer schema. Run capell:upgrade (or update this extension by hand) to clear the pending migrations first.",
     ],
     'install_states' => [
         'free_available' => 'Free',
@@ -894,7 +894,6 @@ return [
     ],
     'page' => [
         'description' => 'Search, compare, and install Capell extensions with compatibility checks and dependency review before anything changes.',
-        'eyebrow' => 'Capell Marketplace',
         'heading' => 'Extensions',
         'more_actions' => 'More actions',
         'tabs' => [
