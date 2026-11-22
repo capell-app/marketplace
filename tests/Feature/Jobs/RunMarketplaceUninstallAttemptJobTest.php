@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Capell\Admin\Data\Extensions\ExtensionRemovalRequestData;
 use Capell\Core\Actions\Extensions\VerifyInstalledExtensionAction;
 use Capell\Core\Actions\RemovePackageAction;
 use Capell\Core\Actions\UninstallPackageAction;
@@ -10,6 +11,8 @@ use Capell\Core\Facades\CapellCore;
 use Capell\Core\Support\Composer\ComposerStateSnapshot;
 use Capell\Marketplace\Actions\RestoreComposerStateAction;
 use Capell\Marketplace\Actions\RunPostOperationHealthCheckAction;
+use Capell\Marketplace\Contracts\MarketplaceComposerChangePublisher;
+use Capell\Marketplace\Contracts\MarketplaceComposerRemovalAuthorizer;
 use Capell\Marketplace\Contracts\MarketplaceComposerRunner;
 use Capell\Marketplace\Data\MarketplaceHealthCheckResultData;
 use Capell\Marketplace\Data\MarketplaceUninstallOptionsData;
@@ -20,11 +23,17 @@ use Capell\Marketplace\Enums\MarketplaceInstallIntentStatus;
 use Capell\Marketplace\Enums\MarketplaceOperationType;
 use Capell\Marketplace\Jobs\RunMarketplaceUninstallAttemptJob;
 use Capell\Marketplace\Models\MarketplaceInstallAttempt;
+use Capell\Marketplace\Support\MarketplaceExtensionRemovalCoordinator;
 use Capell\Marketplace\Support\MarketplaceOperationVocabulary;
 use Capell\Marketplace\Tests\Support\JobUninstallDataDeleter;
 use Capell\Marketplace\Tests\Support\RecordingMarketplaceComposerRunner;
+use Capell\Marketplace\Tests\Support\UninstallRecordingAuthorizer;
+use Capell\Marketplace\Tests\Support\UninstallRecordingPublisher;
+use Capell\Marketplace\Tests\Support\UninstallRecordingRemover;
 use Capell\Tests\Support\Concerns\CreatesAdminUser;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 
 uses(CreatesAdminUser::class);
 
@@ -436,4 +445,237 @@ it('does not verify a package during uninstall', function (): void {
     idleComposerRunner();
     runUninstallJob($attempt);
     expect($attempt->refresh()->status)->toBe(MarketplaceInstallIntentStatus::Succeeded);
+});
+
+function tagUninstallPublisher(MarketplaceComposerChangePublisher $publisher): void
+{
+    app()->instance('test.marketplace.uninstall-publisher', $publisher);
+    app()->tag(['test.marketplace.uninstall-publisher'], MarketplaceComposerChangePublisher::TAG);
+}
+
+it('keeps a logged-out worker from calling a legacy remover without deployment approval', function (): void {
+    Notification::fake();
+    registerRemovablePackage();
+    idleComposerRunner();
+    $removals = [];
+    fakeSuccessfulPackageRemoval($removals);
+    $publisher = new UninstallRecordingRemover;
+    tagUninstallPublisher($publisher);
+
+    $attempt = uninstallAttempt(deletePackage: true);
+    $job = new ReflectionClass(RunMarketplaceUninstallAttemptJob::class)->newInstanceWithoutConstructor();
+    $job->__unserialize(["\0*\0installAttemptId" => (int) $attempt->getKey()]);
+    $job->handle(resolve(MarketplaceComposerRunner::class));
+
+    $attempt->refresh();
+
+    expect($attempt->status)->toBe(MarketplaceInstallIntentStatus::Succeeded)
+        ->and($publisher->removed)->toBe([])
+        ->and($publisher->published)->toBe([])
+        ->and(data_get($attempt->deployment, 'status'))->toBe('unavailable')
+        ->and(uninstallTimelineHas($attempt, 'timeline_requirement_removal_manual'))->toBeTrue();
+});
+
+it('tells the person to remove the requirement by hand when the publisher can only add one', function (): void {
+    Notification::fake();
+    registerRemovablePackage();
+    idleComposerRunner();
+    $removals = [];
+    fakeSuccessfulPackageRemoval($removals);
+    $publisher = new UninstallRecordingPublisher;
+    tagUninstallPublisher($publisher);
+
+    $attempt = uninstallAttempt(deletePackage: true);
+    runUninstallJob($attempt);
+    $attempt->refresh();
+
+    expect($attempt->status)->toBe(MarketplaceInstallIntentStatus::Succeeded)
+        ->and($publisher->published)->toBe([])
+        // An unavailable handoff is what lists the attempt as needing attention.
+        ->and(data_get($attempt->deployment, 'status'))->toBe('unavailable')
+        ->and(data_get($attempt->deployment, 'failure_reason'))->toContain(UNINSTALL_PACKAGE_NAME)
+        ->and(data_get($attempt->deployment, 'failure_reason'))->toContain('composer.json in the deployment repository')
+        ->and(uninstallTimelineHas($attempt, 'timeline_requirement_removal_manual'))->toBeTrue();
+});
+
+it('leaves the deployment source alone when the uninstall kept the package or rolled back', function (bool $deletePackage, bool $failHealth): void {
+    Notification::fake();
+    registerRemovablePackage();
+    idleComposerRunner();
+    fakeUninstallComposerRestore();
+    $removals = [];
+    fakeSuccessfulPackageRemoval($removals);
+
+    if ($failHealth) {
+        failUninstallHealthCheck('The site did not boot after the uninstall.');
+    }
+
+    $publisher = new UninstallRecordingRemover;
+    tagUninstallPublisher($publisher);
+
+    $attempt = uninstallAttempt(deletePackage: $deletePackage);
+    runUninstallJob($attempt);
+    $attempt->refresh();
+
+    expect($publisher->removed)->toBe([])
+        ->and($publisher->published)->toBe([])
+        ->and($attempt->deployment)->toBeNull();
+})->with([
+    'package files kept' => [false, false],
+    'health check rolled back' => [true, true],
+]);
+
+function tagUninstallAuthorizer(MarketplaceComposerRemovalAuthorizer $authorizer, string $containerKey = 'test-removal-authorizer'): void
+{
+    app()->instance($containerKey, $authorizer);
+    app()->tag([$containerKey], MarketplaceComposerRemovalAuthorizer::TAG);
+}
+
+/** @return array{MarketplaceInstallAttempt, RunMarketplaceUninstallAttemptJob} */
+function queueRealUninstall(): array
+{
+    $queue = Queue::fake()->serializeAndRestore();
+    $outcome = new MarketplaceExtensionRemovalCoordinator()->queue(new ExtensionRemovalRequestData(
+        composerName: UNINSTALL_PACKAGE_NAME,
+        packageNames: [UNINSTALL_PACKAGE_NAME],
+        deletePackage: true,
+        deleteData: false,
+        extensionSlug: 'marketplace-uninstall-package',
+        extensionName: 'Marketplace Uninstall Package',
+        kind: 'plugin',
+    ));
+
+    expect($outcome->accepted)->toBeTrue();
+    $attempt = MarketplaceInstallAttempt::query()->latest('id')->firstOrFail();
+    $job = $queue->pushed(RunMarketplaceUninstallAttemptJob::class)->sole();
+    throw_unless($job instanceof RunMarketplaceUninstallAttemptJob, RuntimeException::class);
+    auth()->logout();
+
+    return [$attempt, $job];
+}
+
+it('carries the signed-in operator approval through the queued uninstall to a logged-out worker', function (): void {
+    Notification::fake();
+    registerRemovablePackage();
+    $runner = idleComposerRunner();
+    $removals = [];
+    fakeSuccessfulPackageRemoval($removals);
+    $authorizer = new UninstallRecordingAuthorizer;
+    tagUninstallAuthorizer($authorizer);
+    $this->actingAsAdmin();
+    $actor = $this->authenticatedUser();
+
+    [$attempt, $job] = queueRealUninstall();
+
+    expect($authorizer->issued['actor'] ?? null)->toBe($actor)
+        ->and($authorizer->issued['request']->operationId ?? null)->toBe((string) $attempt->getKey())
+        ->and($authorizer->issued['request']->composerNames ?? null)->toBe([UNINSTALL_PACKAGE_NAME])
+        ->and($authorizer->removed)->toBeNull()
+        ->and(auth()->user())->toBeNull()
+        ->and(serialize($job))->not->toContain('opaque-authorisation-lookup');
+
+    $job->handle($runner);
+
+    $attempt->refresh();
+    expect($authorizer->removed?->approvalId)->toBe('opaque-authorisation-lookup')
+        ->and($removals)->not->toBe([])
+        ->and($attempt->status)->toBe(MarketplaceInstallIntentStatus::Succeeded)
+        ->and(data_get($attempt->deployment, 'reference'))->toBe('https://example.test/pull/2')
+        ->and(uninstallTimelineHas($attempt, 'timeline_requirement_removal_published'))->toBeTrue()
+        ->and($attempt->toJson())->not->toContain('opaque-authorisation-lookup');
+});
+
+it('keeps the repository handoff manual when an actor or unique target cannot approve it', function (string $reason): void {
+    Notification::fake();
+    registerRemovablePackage();
+    $runner = idleComposerRunner();
+    $removals = [];
+    fakeSuccessfulPackageRemoval($removals);
+    $authorizer = new UninstallRecordingAuthorizer;
+    tagUninstallAuthorizer($authorizer);
+
+    if ($reason !== 'no actor') {
+        $this->actingAsAdmin();
+    }
+
+    if ($reason === 'ambiguous providers') {
+        tagUninstallAuthorizer(new UninstallRecordingAuthorizer, 'other-removal-authorizer');
+    }
+
+    $authorizer->canAuthorize = $reason !== 'ambiguous repository';
+    [$attempt, $job] = queueRealUninstall();
+    $job->handle($runner);
+
+    expect($authorizer->removed)->toBeNull()
+        ->and($attempt->refresh()->status)->toBe(MarketplaceInstallIntentStatus::Succeeded)
+        ->and(data_get($attempt->deployment, 'fallback'))->toBe('manual_requirement_removal')
+        ->and($authorizer->issued !== null)->toBe($reason === 'ambiguous repository');
+})->with(['no actor', 'ambiguous repository', 'ambiguous providers']);
+
+it('does not forward an approval to an issuer or uninstall whose persisted approval facts changed', function (string $mismatch): void {
+    Notification::fake();
+    registerRemovablePackage();
+    $runner = idleComposerRunner();
+    $removals = [];
+    fakeSuccessfulPackageRemoval($removals);
+    $authorizer = new UninstallRecordingAuthorizer;
+    tagUninstallAuthorizer($authorizer);
+    $this->actingAsAdmin();
+
+    [$attempt, $job] = queueRealUninstall();
+    $replacement = new class extends UninstallRecordingAuthorizer {};
+    if ($mismatch === 'issuer') {
+        app()->instance('test-removal-authorizer', $replacement);
+    } elseif ($mismatch === 'actor') {
+        $attempt->update(['user_id' => $this->createUser()->getKey()]);
+    } elseif ($mismatch === 'names') {
+        $another = 'capell-app/another-marketplace-package';
+        CapellCore::registerPackage($another, PackageTypeEnum::Plugin, version: '1.0.0');
+        CapellCore::markPackageInstalled($another);
+        $attempt->update(['uninstall_options' => new MarketplaceUninstallOptionsData(
+            deletePackage: true,
+            packageNames: [$another, UNINSTALL_PACKAGE_NAME],
+        )->toArray()]);
+    } else {
+        $payload = $job->__serialize();
+        $attempt = uninstallAttempt(
+            deletePackage: true,
+            overrides: ['user_id' => $attempt->user_id],
+        );
+        $payload["\0*\0installAttemptId"] = (int) $attempt->getKey();
+        $job = new ReflectionClass(RunMarketplaceUninstallAttemptJob::class)->newInstanceWithoutConstructor();
+        $job->__unserialize($payload);
+    }
+
+    $job->handle($runner);
+
+    expect($replacement->removed)->toBeNull()
+        ->and($authorizer->removed)->toBeNull()
+        ->and($attempt->refresh()->status)->toBe(MarketplaceInstallIntentStatus::Succeeded)
+        ->and(data_get($attempt->deployment, 'fallback'))->toBe('manual_requirement_removal');
+})->with(['issuer', 'actor', 'names', 'attempt']);
+
+it('keeps successful local uninstall and a manual warning when provider consumption rejects approval', function (): void {
+    Notification::fake();
+    $logger = Log::spy();
+    registerRemovablePackage();
+    $runner = idleComposerRunner();
+    $removals = [];
+    fakeSuccessfulPackageRemoval($removals);
+    $authorizer = new UninstallRecordingAuthorizer;
+    tagUninstallAuthorizer($authorizer);
+    $this->actingAsAdmin();
+
+    [$attempt, $job] = queueRealUninstall();
+    $authorizer->canConsume = false;
+    $job->handle($runner);
+
+    expect($authorizer->removed)->not->toBeNull()
+        ->and($attempt->refresh()->status)->toBe(MarketplaceInstallIntentStatus::Succeeded)
+        ->and(data_get($attempt->deployment, 'status'))->toBe('failed')
+        ->and(data_get($attempt->deployment, 'fallback'))->toBe('manual_requirement_removal')
+        ->and($attempt->toJson())->not->toContain('opaque-authorisation-lookup');
+    $logger->shouldHaveReceived('warning')
+        ->with('capell-marketplace: deployment requirement removal failed', ['composer_names' => [UNINSTALL_PACKAGE_NAME]])
+        ->once();
 });
